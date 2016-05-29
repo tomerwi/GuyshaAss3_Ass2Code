@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="Ass2RecommenderSystem.cs" />
     <Compile Include="RecommenderSystem.cs" />
   </ItemGroup>
   <ItemGroup>
