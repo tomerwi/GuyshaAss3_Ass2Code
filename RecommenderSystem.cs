@@ -63,25 +63,60 @@ namespace RecommenderSystem
         }*/
         public List<string> Recommend(RecommendationMethod sAlgorithm, string sUserId, int cRecommendations)
         {
-            List<string> ans = new List<string>();
-
             if(sAlgorithm == RecommendationMethod.Popularity)
             {
-                if (popularMovies.Count == 0)
-                    calcPopularity();
-                if (popularMovies.Count < cRecommendations)
-                    return popularMovies;
-                //remove users' movies
-                for(int i =0; i<popularMovies.Count && ans.Count<=cRecommendations; i++)
-                {
-                    string movie = popularMovies[i];
-                    if (!movieToUser[movie].Contains(sUserId))
-                        ans.Add(popularMovies[i]);
-                }            
+                return recommendPopularity(sUserId, cRecommendations);
+            }
+            else if (sAlgorithm.ToString().StartsWith("NN"))
+            {
+
+            }
+            else if(sAlgorithm == RecommendationMethod.Jaccard)
+            {
+            }
+            else if(sAlgorithm == RecommendationMethod.CP)
+            {
+
+            }
+            else //prediction
+            {
+                PredictionMethod predictionMethod = PredictionMethod.Pearson;
+                if (sAlgorithm == RecommendationMethod.BaseModel)
+                    predictionMethod = PredictionMethod.BaseModel;
+                else if (sAlgorithm == RecommendationMethod.Cosine)
+                    predictionMethod = PredictionMethod.Cosine;
+                else if (sAlgorithm == RecommendationMethod.Stereotypes)
+                    predictionMethod = PredictionMethod.Stereotypes;
+                return recommendPredictions(sUserId, cRecommendations, predictionMethod);
             }
 
+            return new List<string>(); //!!
+        }
+        private List<string> recommendPopularity(string sUserId, int cRecommendations)
+        {
+            List<string> ans = new List<string>();
+            if (popularMovies.Count == 0)
+                calcPopularity();
+            if (popularMovies.Count < cRecommendations)
+                return popularMovies;
+            //remove users' movies
+            for (int i = 0; i < popularMovies.Count && ans.Count <= cRecommendations; i++)
+            {
+                string movie = popularMovies[i];
+                if (!movieToUser[movie].Contains(sUserId))
+                    ans.Add(popularMovies[i]);
+            }
             return ans;
         }
+        private List<string> recommendNN(string sUserId, int cRecommendations)
+        {
+            throw new NotImplementedException();
+        }
+        private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
+        {
+            throw new NotImplementedException();
+        }
+
         private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
         {
             SortedDictionary<double, List<string>> mps = new SortedDictionary<double, List<string>>();
