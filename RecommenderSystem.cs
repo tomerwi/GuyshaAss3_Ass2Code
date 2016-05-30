@@ -11,56 +11,17 @@ namespace RecommenderSystem
 {
     class RecommenderSystem : Ass2RecommenderSystem
     {
-        //public enum PredictionMethod { Pearson, Cosine, Random, BaseModel, Stereotypes };
         public enum RecommendationMethod { Popularity, Pearson, Cosine, BaseModel, Stereotypes, NNPearson, NNCosine, NNBaseModel, NNJaccard, CP, Jaccard };
 
         //class members here
         private List<string> popularMovies;
-        //public Ass2RecommenderSystem RecSys;
 
         public RecommenderSystem()
         {
-            // RecSys = new Ass2RecommenderSystem();
             popularMovies = new List<string>();
         }
 
-        /*public void Load(string sFileName)
-        {
-            RecSys.Load(sFileName);
-        }
-        public void Load(string sFileName, double dTrainSetSize)
-        {
-            RecSys.Load(sFileName, dTrainSetSize);
-        }
-
-        public void TrainBaseModel(int cFeatures)
-        {
-            RecSys.TrainBaseModel(cFeatures);
-        }
-        public void TrainStereotypes(int cStereotypes)
-        {
-            RecSys.TrainStereotypes(cStereotypes);
-        }
-
-        public double GetRating(string sUID, string sIID)
-        {
-            return RecSys.GetRating(sUID, sIID);
-        }
-
-        public double PredictRating(PredictionMethod m, string sUID, string sIID)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Dictionary<PredictionMethod, double> ComputeMAE(List<PredictionMethod> lMethods, int cTrials)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Dictionary<PredictionMethod, double> ComputeRMSE(List<PredictionMethod> lMethods, int cTrials)
-        {
-            throw new NotImplementedException();
-        }*/
+       
         public List<string> Recommend(RecommendationMethod sAlgorithm, string sUserId, int cRecommendations)
         {
             if(sAlgorithm == RecommendationMethod.Popularity)
@@ -69,7 +30,7 @@ namespace RecommenderSystem
             }
             else if (sAlgorithm.ToString().StartsWith("NN"))
             {
-
+                return recommendNN(sAlgorithm, sUserId, cRecommendations);
             }
             else if(sAlgorithm == RecommendationMethod.Jaccard)
             {
@@ -108,9 +69,97 @@ namespace RecommenderSystem
             }
             return ans;
         }
-        private List<string> recommendNN(string sUserId, int cRecommendations)
+        private List<string> recommendNN(RecommendationMethod sAlgorithm, string sUserId, int cRecommendations)
         {
-            throw new NotImplementedException();
+            List<string> ans = new List<string>();
+            Dictionary<string, double> sumWmovies = new Dictionary<string, double>();
+            Dictionary<string, double> similarUsers = calcSimilarUsers(sAlgorithm, sUserId);
+            foreach(string movie in movieToUser.Keys)
+            {
+                if (movieToUser[movie].Contains(sUserId))
+                    continue;
+                foreach(string user in similarUsers.Keys)
+                {
+                    if(movieToUser[movie].Contains(user))
+                    {
+                        if (!sumWmovies.ContainsKey(movie))
+                            sumWmovies.Add(movie, 0);
+                        sumWmovies[movie] += similarUsers[user];
+                    }
+                }
+            }
+            //think if there's a better way to do it
+            SortedDictionary<double, List<string>> movieWSorted = new SortedDictionary<double, List<string>>();
+            foreach(string movie in sumWmovies.Keys)
+            {
+                double w = sumWmovies[movie];
+                if (!movieWSorted.ContainsKey(w))
+                    movieWSorted.Add(w, new List<string>());
+                movieWSorted[w].Add(movie);
+            }
+            foreach(List<string> movies in movieWSorted.Values)
+            {
+                foreach(string movie in movies)
+                {
+                    if (ans.Count >= cRecommendations)
+                        break;
+                    ans.Add(movie);
+                }
+                if (ans.Count >= cRecommendations)
+                    break;
+            }
+            return ans;
+        }
+        private Dictionary<string,double> calcSimilarUsers(RecommendationMethod sAlgorithm, string sUserId)
+        {
+            SortedDictionary<double, List<string>> wToUser = new SortedDictionary<double, List<string>>();
+            List<int> usedLocations = new List<int>();
+            double sumOfW = 0;
+            int numOfUsers = 0;
+            Random r = new Random();
+            while (numOfUsers < 500) //not going over all the users to save time
+            {
+                if (numOfUsers >= 20 && (sumOfW / numOfUsers) > 0.8) //!!
+                    break;
+                int location = (int) ((m_ratings.Count - 1) * r.NextDouble());
+                if (usedLocations.Contains(location))
+                    continue;
+                string user = m_ratings.Keys.ToList()[location];
+                if (user.Equals(sUserId))
+                    continue;
+                double w = 0;
+                if (sAlgorithm == RecommendationMethod.NNPearson)
+                    w = calcWPearson(sUserId, user, "");
+                else if (sAlgorithm == RecommendationMethod.NNCosine)
+                    w = calcWCosine(sUserId, user, "");
+                //TODO: base model, jaccard
+
+                if (w>=0.5)//!!
+                {
+                    sumOfW += w;
+                    numOfUsers++;
+                    if (!wToUser.ContainsKey(w))
+                        wToUser.Add(w, new List<string>());
+                    wToUser[w].Add(user);
+                }
+            }
+            Dictionary<string, double> similarUsers = new Dictionary<string, double>();
+            //take only top 20
+            foreach(double w in wToUser.Keys)
+            {
+                List<string> users = wToUser[w];
+                foreach(string user in users)
+                {
+                    if (!similarUsers.ContainsKey(user))
+                        similarUsers.Add(user, w);
+                    if (similarUsers.Count > 20)
+                        break;
+                }
+                if (similarUsers.Count > 20)
+                    break;
+            }
+            
+            return similarUsers;
         }
         private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
         {
