@@ -114,21 +114,44 @@ namespace RecommenderSystem
         }
         private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
         {
-            throw new NotImplementedException();
+            List<string> ans = new List<string>();
+
+            SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
+            foreach(string movie in movieToUser.Keys)
+            {
+                if (movieToUser[movie].Contains(sUserId))
+                    continue;
+                double predictedRating = PredictRating(predictionMethod, sUserId, movie);
+                if (!moviesPredictedRatings.ContainsKey(predictedRating))
+                    moviesPredictedRatings.Add(predictedRating, new List<string>());
+                moviesPredictedRatings[predictedRating].Add(movie);
+            }
+            foreach(List<string> movies in moviesPredictedRatings.Values)
+            {
+                if (ans.Count >= cRecommendations)
+                    break;
+                ans.AddRange(movies);
+            }
+            if (ans.Count > cRecommendations)//crop
+            {
+                ans.RemoveRange(cRecommendations, ans.Count - cRecommendations); //!!
+            }
+
+            return ans;
         }
 
         private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
         {
-            SortedDictionary<double, List<string>> mps = new SortedDictionary<double, List<string>>();
+            SortedDictionary<double, List<string>> moviePopSorted = new SortedDictionary<double, List<string>>();
             foreach (string movie in moviePopularity.Keys)
             {
                 double popRate = moviePopularity[movie];
-                if (!mps.ContainsKey(popRate))
-                    mps.Add(popRate, new List<string>());
-                mps[popRate].Add(movie);
+                if (!moviePopSorted.ContainsKey(popRate))
+                    moviePopSorted.Add(popRate, new List<string>());
+                moviePopSorted[popRate].Add(movie);
             }
 
-            foreach(List<string> movies in mps.Values)
+            foreach(List<string> movies in moviePopSorted.Values)
             {
                 popularMovies.AddRange(movies);
             }
