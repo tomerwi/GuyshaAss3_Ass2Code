@@ -10,3 +10,6 @@ C:\Users\user\Desktop\לימודים\גיישה\Assignment 2\Rec_Ass2\bin\Debug\
 C:\Users\user\Desktop\לימודים\גיישה\Assignment 2\Rec_Ass2\obj\x86\Debug\Assignment2.csprojResolveAssemblyReference.cache
 C:\Users\user\Desktop\לימודים\גיישה\Assignment 3\GuyshaAss3_Ass2Code\obj\x86\Debug\Assignment2.exe
 C:\Users\user\Desktop\לימודים\גיישה\Assignment 3\GuyshaAss3_Ass2Code\obj\x86\Debug\Assignment2.pdb
+C:\Users\user\Desktop\לימודים\גיישה\Assignment 3\GuyshaAss3_Ass2Code\bin\Debug\Assignment2.exe
+C:\Users\user\Desktop\לימודים\גיישה\Assignment 3\GuyshaAss3_Ass2Code\bin\Debug\Assignment2.pdb
+C:\Users\user\Desktop\לימודים\גיישה\Assignment 3\GuyshaAss3_Ass2Code\obj\x86\Debug\Assignment2.csprojResolveAssemblyReference.cache

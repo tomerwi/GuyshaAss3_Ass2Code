@@ -12,30 +12,33 @@ namespace RecommenderSystem
         public enum PredictionMethod { Pearson, Cosine, Random, BaseModel, Stereotypes };
 
         //class members here
-        public Dictionary<string, Dictionary<string, double>> m_ratings; //users to movies
-        private Dictionary<string, double> m_userAvgs;
-        public Dictionary<string, List<string>> movieToUser;
-        private Dictionary<string, double> cosineDenominator;
-
-        private Dictionary<string,Dictionary<string,double>> raiDic_AllUsers; //KEY = USERID. VALUE = <MOVIE,VAL> SO THAT VALUE IS THE DIFFERENCE (RATING-AVARAGE)
-        private Dictionary<string, double> currentAvarage;
+        protected Dictionary<string, Dictionary<string, double>> m_ratings; //users to movies
+        protected Dictionary<string, double> m_userAvgs;
+        protected Dictionary<string, List<string>> movieToUser;
+        protected Dictionary<string, double> cosineDenominator;
+        protected Dictionary<string,Dictionary<string,double>> raiDic_AllUsers; //KEY = USERID. VALUE = <MOVIE,VAL> SO THAT VALUE IS THE DIFFERENCE (RATING-AVARAGE)
+        protected Dictionary<string, double> currentAvarage;
 
         //E2 fields
-        private Dictionary<string, Dictionary<string, double>> m_ratings_train; //rating belongs to the train set
-        private Dictionary<string, Dictionary<string, double>> m_ratings_test;
-       // private Dictionary<string, Dictionary<string, double>> m_ratings_trainOfTrain;
-        private Dictionary<string, Dictionary<string, double>> m_ratings_validation;
-        private Dictionary<string, Dictionary<string, double>> m_centroids;
-        private Dictionary<string, double> m_centroidAvg;
-        //private Dictionary<string, Dictionary<string, double>> m_rui_base_model;
-        private Dictionary<string, double> buDic;
-        private Dictionary<string, double> biDic;
-        private Dictionary<string, List<double>> puDic;
-        private Dictionary<string, List<double>> qiDic;
-        private double mue;
-        private int dataSetSize = 0;
+        protected Dictionary<string, Dictionary<string, double>> m_ratings_train; //rating belongs to the train set
+        protected Dictionary<string, Dictionary<string, double>> m_ratings_test;
+        // protected Dictionary<string, Dictionary<string, double>> m_ratings_trainOfTrain;
+        protected Dictionary<string, Dictionary<string, double>> m_ratings_validation;
+        protected Dictionary<string, Dictionary<string, double>> m_centroids;
+        protected Dictionary<string, double> m_centroidAvg;
+        //protected Dictionary<string, Dictionary<string, double>> m_rui_base_model;
+        protected Dictionary<string, double> buDic;
+        protected Dictionary<string, double> biDic;
+        protected Dictionary<string, List<double>> puDic;
+        protected Dictionary<string, List<double>> qiDic;
+        protected double mue;
+        protected int dataSetSize = 0;
         bool trainedBaseModel = false;
         bool trainedStereoType = false;
+
+        //a3
+        protected Dictionary<string, double> moviePopularity;
+
 
         //constructor
         public Ass2RecommenderSystem()
@@ -60,6 +63,9 @@ namespace RecommenderSystem
 
             puDic = new Dictionary<string, List<double>>(); //I think that each pu and qi is a vector of values
             qiDic = new Dictionary<string, List<double>>();
+
+            //a3
+            moviePopularity = new Dictionary<string, double>();
         }
 
         //load a datatset 
@@ -111,7 +117,7 @@ namespace RecommenderSystem
             }
         }
 
-        private void splitToTrainAndTest(double dTrainSetSize)
+        protected void splitToTrainAndTest(double dTrainSetSize)
         {
             HashSet<string> alreadyChosen = new HashSet<string>();
             int currentTestSize = 0;
@@ -145,7 +151,7 @@ namespace RecommenderSystem
             }
         }
 
-        private int splitUserToTrainAndTest(string userID, double precentOfMoviesToTest, bool validation) //returns number of movies moved to test set
+        protected int splitUserToTrainAndTest(string userID, double precentOfMoviesToTest, bool validation) //returns number of movies moved to test set
         {
             int numOfMovies = (m_ratings_train[userID].Keys.Count-1);
             int k = (int)(numOfMovies * precentOfMoviesToTest);
@@ -177,7 +183,7 @@ namespace RecommenderSystem
         }
        
 
-        private void parseRatings(StreamReader sr) //not saving time stamp
+        protected void parseRatings(StreamReader sr) //not saving time stamp
         {
             string line = sr.ReadLine();
             while (line != null)
@@ -210,10 +216,11 @@ namespace RecommenderSystem
                    if (!movieToUser.ContainsKey(movieId))
                     {
                         movieToUser.Add(movieId, new List<string>());
+                        moviePopularity.Add(movieId, 0);//a3
 
                     }
-                    movieToUser[movieId].Add(userId); 
-
+                    movieToUser[movieId].Add(userId);
+                    moviePopularity[movieId] += rating;//a3
                     if (!currentAvarage.ContainsKey(userId))
                     {
                         currentAvarage.Add(userId, 0);
@@ -226,7 +233,7 @@ namespace RecommenderSystem
             sr.Close();
         }
 
-        private void calcAvgs() //for the initial calculations ufter loading ratings file
+        protected void calcAvgs() //for the initial calculations ufter loading ratings file
         {
             //calc avg ratings for each user - the sums foreach user has already calculated
             foreach(string userId in m_ratings.Keys) //tomer:  maybe it can be done in the function above
@@ -237,7 +244,7 @@ namespace RecommenderSystem
             }
         }
 
-        private void calcRAI()
+        protected void calcRAI()
         {
             foreach (string user in m_ratings.Keys)
             {
@@ -381,7 +388,7 @@ namespace RecommenderSystem
 
         }   
         
-        private double predictRatingStereoType(string userId, string itemId)
+        protected double predictRatingStereoType(string userId, string itemId)
         {
             //Find the closest centroid
             if(m_centroids.Count ==0)
@@ -406,7 +413,7 @@ namespace RecommenderSystem
                 return m_centroidAvg[bestCentroid];
         }
 
-        private double predictRatingBaseModel(string userId, string itemId)
+        protected double predictRatingBaseModel(string userId, string itemId)
         {
             double bi = 0;
             if(biDic.ContainsKey(itemId))
@@ -429,7 +436,7 @@ namespace RecommenderSystem
             return rui;
         }
 
-        private double randomPredictRating(string sUID, string sIID)//check this!
+        protected double randomPredictRating(string sUID, string sIID)//check this!
         {
             Random r = new Random();
             double random = r.NextDouble();
@@ -444,7 +451,7 @@ namespace RecommenderSystem
 
         
         }
-        private double calcWPearson(string aID, string uID, string sIID)
+        protected double calcWPearson(string aID, string uID, string sIID)
         {
             Dictionary<string, double> raiDic = raiDic_AllUsers[aID];
             Dictionary<string, double> ruiDic = raiDic_AllUsers[uID];
@@ -467,7 +474,7 @@ namespace RecommenderSystem
             return numerator/denominator;
         }
 
-        private double calcWCosine(string aID, string uID, string sIID) 
+        protected double calcWCosine(string aID, string uID, string sIID) 
         {
             double numerator = 0;
             foreach (string mId in m_ratings[uID].Keys)
@@ -560,7 +567,7 @@ namespace RecommenderSystem
             return ans;
         }
 
-        private double getSmallRandomNumber()
+        protected double getSmallRandomNumber()
         {
             Random random = new Random();
             bool negative = random.NextDouble() > 0.5;
@@ -673,7 +680,7 @@ namespace RecommenderSystem
             trainedBaseModel = true;
         }
 
-        private double computeMue() 
+        protected double computeMue() 
         {
             double totalRating  = 0;
             double numOfMovies = 0;
@@ -688,7 +695,7 @@ namespace RecommenderSystem
 
             return totalRating/numOfMovies;
         }
-        private double calcUserCentroidPearson(string aID, string centroidID)
+        protected double calcUserCentroidPearson(string aID, string centroidID)
         {
             double numerator = 0;
             double denominatorLeft = 0;
