@@ -15,10 +15,12 @@ namespace RecommenderSystem
 
         //class members here
         private List<string> popularMovies;
+        private Dictionary<string, Dictionary<string, int>> uiAndujDic;
 
         public RecommenderSystem()
         {
             popularMovies = new List<string>();
+            uiAndujDic = new Dictionary<string, Dictionary<string, int>>();
         }
 
        
@@ -34,10 +36,11 @@ namespace RecommenderSystem
             }
             else if(sAlgorithm == RecommendationMethod.Jaccard)
             {
+                //?!?!
             }
             else if(sAlgorithm == RecommendationMethod.CP)
             {
-
+                return recommendCP(sUserId, cRecommendations);
             }
             else //prediction
             {
@@ -66,6 +69,44 @@ namespace RecommenderSystem
                 string movie = popularMovies[i];
                 if (!movieToUser[movie].Contains(sUserId))
                     ans.Add(popularMovies[i]);
+            }
+            return ans;
+        }
+
+        private List<string> recommendCP(string sUserId, int cRecommendations)
+        {
+            SortedDictionary<double, List<string>> pi2Sorted = new SortedDictionary<double, List<string>>();
+            if (uiAndujDic.Count == 0)
+                calcuiAndujDic();
+            foreach(string i2 in movieToUser.Keys)
+            {
+                if (movieToUser[i2].Contains(sUserId))
+                    continue;
+                double maxw = 0;
+                foreach(string i1 in m_ratings[sUserId].Keys)
+                {
+                    int uianduj = uiAndujDic[i1][i2];
+                    int ui = movieToUser[i1].Count;
+                    double wi2 = (double)uianduj / (double)ui;
+                    if (wi2 > maxw)
+                        maxw = wi2;
+                }
+                if (!pi2Sorted.ContainsKey(maxw))
+                    pi2Sorted.Add(maxw, new List<string>());
+                pi2Sorted[maxw].Add(i2);
+            }
+            //take only top cRec
+            List<string> ans = new List<string>();
+            foreach(List<string> movies in pi2Sorted.Values)
+            {
+                foreach(string movie in movies)
+                {
+                    ans.Add(movie);
+                    if (ans.Count >= cRecommendations)
+                        break;
+                }
+                if (ans.Count >= cRecommendations)
+                    break;
             }
             return ans;
         }
@@ -120,7 +161,7 @@ namespace RecommenderSystem
                     numerator++;
             }
             int denominator = m_ratings[userID].Keys.Count + m_ratings[userID2].Keys.Count - numerator;
-            return (numerator / denominator);
+            return ((double)numerator / (double)denominator);
         }
 
         private double calcBaseModelSimilarity(string userID, string userID2) //TODO
@@ -137,7 +178,7 @@ namespace RecommenderSystem
             Random r = new Random();
             while (numOfUsers < 500) //not going over all the users to save time
             {
-                if (numOfUsers >= 20 && (sumOfW / numOfUsers) > 0.8) //!!
+                if (numOfUsers >= 20 && (sumOfW / (double)numOfUsers) > 0.8) //!!
                     break;
                 int location = (int) ((m_ratings.Count - 1) * r.NextDouble());
                 if (usedLocations.Contains(location))
@@ -210,6 +251,10 @@ namespace RecommenderSystem
             return ans;
         }
 
+        private void calcuiAndujDic()
+        {
+
+        }
         private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
         {
             SortedDictionary<double, List<string>> moviePopSorted = new SortedDictionary<double, List<string>>();
