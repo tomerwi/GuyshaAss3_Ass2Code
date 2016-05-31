@@ -36,11 +36,11 @@ namespace RecommenderSystem
             }
             else if(sAlgorithm == RecommendationMethod.Jaccard)
             {
-                //?!?!
+                return recommendCP(sUserId, cRecommendations, true);
             }
             else if(sAlgorithm == RecommendationMethod.CP)
             {
-                return recommendCP(sUserId, cRecommendations);
+                return recommendCP(sUserId, cRecommendations , false);
             }
             else //prediction
             {
@@ -54,7 +54,6 @@ namespace RecommenderSystem
                 return recommendPredictions(sUserId, cRecommendations, predictionMethod);
             }
 
-            return new List<string>(); //!!
         }
         private List<string> recommendPopularity(string sUserId, int cRecommendations)
         {
@@ -73,7 +72,7 @@ namespace RecommenderSystem
             return ans;
         }
 
-        private List<string> recommendCP(string sUserId, int cRecommendations)
+        private List<string> recommendCP(string sUserId, int cRecommendations , bool jaccard)
         {
             SortedDictionary<double, List<string>> pi2Sorted = new SortedDictionary<double, List<string>>();
             if (uiAndujDic.Count == 0)
@@ -86,8 +85,13 @@ namespace RecommenderSystem
                 foreach(string i1 in m_ratings[sUserId].Keys)
                 {
                     int uianduj = uiAndujDic[i1][i2];
+                    if (uianduj < 10)
+                        continue;
                     int ui = movieToUser[i1].Count;
-                    double wi2 = (double)uianduj / (double)ui;
+                    int denominator = ui;
+                    if (jaccard)
+                        denominator += (movieToUser[i2].Count - uianduj);
+                    double wi2 = (double)uianduj / (double)denominator;
                     if (wi2 > maxw)
                         maxw = wi2;
                 }
@@ -253,7 +257,33 @@ namespace RecommenderSystem
 
         private void calcuiAndujDic()
         {
-
+            foreach(string imovie in movieToUser.Keys)
+            {
+                uiAndujDic.Add(imovie, new Dictionary<string, int>());
+                foreach(string jmovie in movieToUser.Keys)
+                {
+                    if (imovie.Equals(jmovie))
+                        continue;
+                    int uianduj;
+                    if (uiAndujDic.ContainsKey(jmovie))
+                    {
+                        if(uiAndujDic[jmovie].TryGetValue(imovie,out uianduj))
+                        {
+                            uiAndujDic[imovie].Add(jmovie, uianduj);
+                            continue;
+                        }
+                    }
+                    uianduj = 0;
+                    foreach(string user in movieToUser[jmovie])
+                    {
+                        if (movieToUser[imovie].Contains(user))
+                            uianduj++;
+                    }
+                    uiAndujDic[imovie].Add(jmovie, uianduj);
+                    if (uiAndujDic.ContainsKey(jmovie))
+                        uiAndujDic[jmovie].Add(imovie, uianduj);
+                }
+            }
         }
         private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
         {
