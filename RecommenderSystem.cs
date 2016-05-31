@@ -110,6 +110,24 @@ namespace RecommenderSystem
             }
             return ans;
         }
+
+        private double calcJaccardSimilarity(string userID, string userID2) //TODO
+        {
+            int numerator = 0;
+            foreach(string movie in m_ratings[userID2].Keys)
+            {
+                if (m_ratings[userID].ContainsKey(movie))
+                    numerator++;
+            }
+            int denominator = m_ratings[userID].Keys.Count + m_ratings[userID2].Keys.Count - numerator;
+            return (numerator / denominator);
+        }
+
+        private double calcBaseModelSimilarity(string userID, string userID2) //TODO
+        {
+            throw new NotImplementedException();
+        }
+
         private Dictionary<string,double> calcSimilarUsers(RecommendationMethod sAlgorithm, string sUserId)
         {
             SortedDictionary<double, List<string>> wToUser = new SortedDictionary<double, List<string>>();
@@ -128,11 +146,14 @@ namespace RecommenderSystem
                 if (user.Equals(sUserId))
                     continue;
                 double w = 0;
-                if (sAlgorithm == RecommendationMethod.NNPearson)
-                    w = calcWPearson(sUserId, user, "");
-                else if (sAlgorithm == RecommendationMethod.NNCosine)
+                if (sAlgorithm == RecommendationMethod.NNCosine)
                     w = calcWCosine(sUserId, user, "");
-                //TODO: base model, jaccard
+                else if (sAlgorithm == RecommendationMethod.NNJaccard)
+                    w = calcJaccardSimilarity(sUserId, user);
+                else if (sAlgorithm == RecommendationMethod.BaseModel)
+                    w = calcBaseModelSimilarity(sUserId, user);
+                else
+                    w = calcWPearson(sUserId, user, "");
 
                 if (w>=0.5)//!!
                 {
