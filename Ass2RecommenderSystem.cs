@@ -16,7 +16,7 @@ namespace RecommenderSystem
         protected Dictionary<string, double> m_userAvgs;
         protected Dictionary<string, List<string>> movieToUser;
         protected Dictionary<string, double> cosineDenominator;
-        protected Dictionary<string,Dictionary<string,double>> raiDic_AllUsers; //KEY = USERID. VALUE = <MOVIE,VAL> SO THAT VALUE IS THE DIFFERENCE (RATING-AVARAGE)
+        //protected Dictionary<string,Dictionary<string,double>> raiDic_AllUsers; //KEY = USERID. VALUE = <MOVIE,VAL> SO THAT VALUE IS THE DIFFERENCE (RATING-AVARAGE)
         protected Dictionary<string, double> currentAvarage;
 
         //E2 fields
@@ -47,7 +47,7 @@ namespace RecommenderSystem
             m_userAvgs = new Dictionary<string, double>();
             movieToUser = new Dictionary<string, List<string>>();
             cosineDenominator = new Dictionary<string, double>();
-            raiDic_AllUsers = new Dictionary<string, Dictionary<string, double>>();
+            //raiDic_AllUsers = new Dictionary<string, Dictionary<string, double>>();
             currentAvarage = new Dictionary<string, double>(); //not sure if we need it  
 
             //E2
@@ -177,8 +177,8 @@ namespace RecommenderSystem
                 m_ratings_train[userID].Remove(movieID);
                 numOfAdded++;
             }
-            if (m_ratings_train[userID].Count == 0) //cant be true
-                m_ratings_train.Remove(userID);
+            //if (m_ratings_train[userID].Count == 0) //cant be true
+              //  m_ratings_train.Remove(userID);
             return numOfAdded;
         }
        
@@ -244,7 +244,7 @@ namespace RecommenderSystem
             }
         }
 
-        protected void calcRAI()
+       /* protected void calcRAI()
         {
             foreach (string user in m_ratings.Keys)
             {
@@ -259,7 +259,7 @@ namespace RecommenderSystem
                 }
                 raiDic_AllUsers.Add(user, rai);
             }
-        }
+        }*/
 
         //return a list of the ids of all the users in the dataset
         public List<string> GetAllUsers()
@@ -453,18 +453,18 @@ namespace RecommenderSystem
         }
         protected double calcWPearson(string aID, string uID, string sIID)
         {
-            Dictionary<string, double> raiDic = raiDic_AllUsers[aID];
-            Dictionary<string, double> ruiDic = raiDic_AllUsers[uID];
+            double aAvg = m_userAvgs[aID];
+            double uAvg = m_userAvgs[uID];
             double numerator = 0;
             double denominatorLeft = 0;
             double denominatorRight = 0;
             foreach(string mId in m_ratings[uID].Keys) 
             {
-                if (!raiDic.ContainsKey(mId) || mId.Equals(sIID)) //only movies that they both rated and not take into account the movie that we want to predict
+                if (!m_ratings[aID].ContainsKey(mId) || mId.Equals(sIID)) //only movies that they both rated and not take into account the movie that we want to predict
                     continue;
-                double ruval = ruiDic[mId];
-                double raval = raiDic[mId];
-                numerator += (raiDic[mId] * ruiDic[mId]);
+                double ruval = m_ratings[uID][mId] - uAvg;
+                double raval = m_ratings[aID][mId] - aAvg;
+                numerator += (ruval * raval);
                 denominatorLeft += Math.Pow(ruval, 2);
                 denominatorRight+= Math.Pow(raval, 2);
             }
@@ -701,12 +701,13 @@ namespace RecommenderSystem
             double denominatorLeft = 0;
             double denominatorRight = 0;
             double centroidAvg = m_centroidAvg[centroidID];
-            foreach (string itemID in raiDic_AllUsers[aID].Keys) 
+            double aAvg = m_userAvgs[aID];
+            foreach (string itemID in m_ratings[aID].Keys) 
             {
                 if (!m_centroids[centroidID].ContainsKey(itemID)) //only movies that they both rated and not take into account the movie that we want to predict
                     continue;
                 double ruval = m_centroids[centroidID][itemID] - centroidAvg;
-                double raval = raiDic_AllUsers[aID][itemID];
+                double raval = m_ratings[aID][itemID] - aAvg;
                 numerator += (raval * ruval);
                 denominatorLeft += Math.Pow(ruval, 2);
                 denominatorRight += Math.Pow(raval, 2);

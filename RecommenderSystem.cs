@@ -34,7 +34,6 @@ namespace RecommenderSystem
                     {
                         parseRatings(r);
                         calcAvgs();
-                        calcRAI();
                         calcuiAndujDic();
                         calcPopularity();
                     }
@@ -59,7 +58,6 @@ namespace RecommenderSystem
                         splitToTrainAndTest(dTrainSetSize);
                         mue = computeMue(); //it computes the mue only on the train
                         calcAvgs(); //it computes the avrage on m_ratings 
-                        calcRAI();
                         calcuiAndujDic();
                         calcPopularity();
                     }
@@ -380,9 +378,10 @@ namespace RecommenderSystem
             Dictionary<string, Dictionary<RecommendationMethod, List<string>>> recommendations = new Dictionary<string, Dictionary<RecommendationMethod, List<string>>>();
             foreach (string user in m_ratings_test.Keys)
             {
+                recommendations.Add(user, new Dictionary<RecommendationMethod, List<string>>());
                 foreach(RecommendationMethod method in lMethods)
                 {
-
+                    recommendations[user].Add(method, Recommend(method, user, max));
                 }
             }
 
