@@ -74,7 +74,7 @@ namespace RecommenderSystem
         //More at http://recsyswiki.com/wiki/Movietweetings
         //Download at https://github.com/sidooms/MovieTweetings/tree/master/latest
         //Do all precomputations here if needed
-        public void Load(string sFileName)
+        /*public void Load(string sFileName)
         {
             try
             {
@@ -116,7 +116,7 @@ namespace RecommenderSystem
                 Console.WriteLine("Couldn't load file");
             }
         }
-
+        */
         protected void splitToTrainAndTest(double dTrainSetSize)
         {
             HashSet<string> alreadyChosen = new HashSet<string>();

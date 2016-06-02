@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
+
 //using RecommenderSystem.Infrastructure;
 //using RecommenderSystem.MovieLens;
 //using RecommenderSystem.Algorithms;
@@ -22,7 +24,64 @@ namespace RecommenderSystem
             popularMovies = new List<string>();
             uiAndujDic = new Dictionary<string, Dictionary<string, int>>();
         }
+        public void Load(string sFileName)
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(sFileName, FileMode.Open, FileAccess.Read))
+                {
+                    using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
+                    {
+                        parseRatings(r);
+                        calcAvgs();
+                        calcRAI();
+                        calcuiAndujDic();
+                        calcPopularity();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Couldn't load file");
+            }
+        }
 
+        //new E2
+        public void Load(string sFileName, double dTrainSetSize)
+        {
+            try
+            {
+                using (FileStream fs = new FileStream(sFileName, FileMode.Open, FileAccess.Read))
+                {
+                    using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
+                    {
+                        parseRatings(r);
+                        splitToTrainAndTest(dTrainSetSize);
+                        mue = computeMue(); //it computes the mue only on the train
+                        calcAvgs(); //it computes the avrage on m_ratings 
+                        calcRAI();
+                        calcuiAndujDic();
+                        calcPopularity();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Couldn't load file");
+            }
+        }
+
+        public HashSet<string> GetTestUsers()
+        {
+            return new HashSet<string>(m_ratings_test.Keys.ToList());
+        }
+
+        public HashSet<string> GetTestUserItems(string sUserId)
+        {
+            if(m_ratings_test.ContainsKey(sUserId))
+                return new HashSet<string>(m_ratings_test[sUserId].Keys.ToList());
+            return new HashSet<string>();
+        } 
        
         public List<string> Recommend(RecommendationMethod sAlgorithm, string sUserId, int cRecommendations)
         {
@@ -58,8 +117,8 @@ namespace RecommenderSystem
         private List<string> recommendPopularity(string sUserId, int cRecommendations)
         {
             List<string> ans = new List<string>();
-            if (popularMovies.Count == 0)
-                calcPopularity();
+            //if (popularMovies.Count == 0)
+              //  calcPopularity();
             if (popularMovies.Count < cRecommendations)
                 return popularMovies;
             //remove users' movies
@@ -75,8 +134,8 @@ namespace RecommenderSystem
         private List<string> recommendCP(string sUserId, int cRecommendations , bool jaccard)
         {
             SortedDictionary<double, List<string>> pi2Sorted = new SortedDictionary<double, List<string>>();
-            if (uiAndujDic.Count == 0)
-                calcuiAndujDic();
+            //if (uiAndujDic.Count == 0)
+              //  calcuiAndujDic();
             foreach(string i2 in movieToUser.Keys)
             {
                 if (movieToUser[i2].Contains(sUserId))
@@ -101,9 +160,11 @@ namespace RecommenderSystem
             }
             //take only top cRec
             List<string> ans = new List<string>();
-            foreach(List<string> movies in pi2Sorted.Values)
+            List<double> rev = pi2Sorted.Keys.ToList();
+            rev.Reverse();
+            foreach (double d in rev)
             {
-                foreach(string movie in movies)
+                foreach(string movie in pi2Sorted[d])
                 {
                     ans.Add(movie);
                     if (ans.Count >= cRecommendations)
@@ -142,9 +203,11 @@ namespace RecommenderSystem
                     movieWSorted.Add(w, new List<string>());
                 movieWSorted[w].Add(movie);
             }
-            foreach(List<string> movies in movieWSorted.Values)
+            List<double> rev = movieWSorted.Keys.ToList();
+            rev.Reverse();
+            foreach(double d in rev)
             {
-                foreach(string movie in movies)
+                foreach(string movie in movieWSorted[d])
                 {
                     if (ans.Count >= cRecommendations)
                         break;
@@ -155,6 +218,36 @@ namespace RecommenderSystem
             }
             return ans;
         }
+        private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
+        {
+            List<string> ans = new List<string>();
+            SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
+            foreach (string movie in movieToUser.Keys)
+            {
+                if (movieToUser[movie].Contains(sUserId))
+                    continue;
+                double predictedRating = PredictRating(predictionMethod, sUserId, movie);
+                if (!moviesPredictedRatings.ContainsKey(predictedRating))
+                    moviesPredictedRatings.Add(predictedRating, new List<string>());
+                moviesPredictedRatings[predictedRating].Add(movie);
+            }
+            List<double> rev = moviesPredictedRatings.Keys.ToList();
+            rev.Reverse();
+            foreach (double d in rev)
+            {
+                if (ans.Count >= cRecommendations)
+                    break;
+                ans.AddRange(moviesPredictedRatings[d]);
+            }
+            if (ans.Count > cRecommendations)//crop
+            {
+                ans.RemoveRange(cRecommendations, ans.Count - cRecommendations); //!!
+            }
+
+            return ans;
+        }
+
+        //calc funcs 
 
         private double calcJaccardSimilarity(string userID, string userID2) //TODO
         {
@@ -211,7 +304,9 @@ namespace RecommenderSystem
             }
             Dictionary<string, double> similarUsers = new Dictionary<string, double>();
             //take only top 20
-            foreach(double w in wToUser.Keys)
+            List<double> rev = wToUser.Keys.ToList();
+            rev.Reverse();
+            foreach (double w in rev)
             {
                 List<string> users = wToUser[w];
                 foreach(string user in users)
@@ -227,33 +322,7 @@ namespace RecommenderSystem
             
             return similarUsers;
         }
-        private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
-        {
-            List<string> ans = new List<string>();
-
-            SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
-            foreach(string movie in movieToUser.Keys)
-            {
-                if (movieToUser[movie].Contains(sUserId))
-                    continue;
-                double predictedRating = PredictRating(predictionMethod, sUserId, movie);
-                if (!moviesPredictedRatings.ContainsKey(predictedRating))
-                    moviesPredictedRatings.Add(predictedRating, new List<string>());
-                moviesPredictedRatings[predictedRating].Add(movie);
-            }
-            foreach(List<string> movies in moviesPredictedRatings.Values)
-            {
-                if (ans.Count >= cRecommendations)
-                    break;
-                ans.AddRange(movies);
-            }
-            if (ans.Count > cRecommendations)//crop
-            {
-                ans.RemoveRange(cRecommendations, ans.Count - cRecommendations); //!!
-            }
-
-            return ans;
-        }
+   
 
         private void calcuiAndujDic()
         {
@@ -295,17 +364,31 @@ namespace RecommenderSystem
                     moviePopSorted.Add(popRate, new List<string>());
                 moviePopSorted[popRate].Add(movie);
             }
-
-            foreach(List<string> movies in moviePopSorted.Values)
+            List<double> rev = moviePopSorted.Keys.ToList();
+            rev.Reverse();
+            foreach(double d in rev)
             {
-                popularMovies.AddRange(movies);
+                popularMovies.AddRange(moviePopSorted[d]);
             }
             
         }
         //               length           algorithm              precision/recall   result        ---> i think...
         public Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
         {
-            throw new NotImplementedException();
+            Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ans = new Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>>();
+            int max = lLengths.Max();
+            Dictionary<string, Dictionary<RecommendationMethod, List<string>>> recommendations = new Dictionary<string, Dictionary<RecommendationMethod, List<string>>>();
+            foreach (string user in m_ratings_test.Keys)
+            {
+                foreach(RecommendationMethod method in lMethods)
+                {
+
+                }
+            }
+
+
+
+            return ans;
         }
 
     }
