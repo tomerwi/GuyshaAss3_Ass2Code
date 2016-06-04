@@ -33,7 +33,7 @@ namespace RecommenderSystem
                     using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
                     {
                         parseRatings(r);
-                        calcAvgs();
+                        calcAdditionalData();
                         calcuiAndujDic();
                         calcPopularity();
                     }
@@ -55,11 +55,17 @@ namespace RecommenderSystem
                     using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
                     {
                         parseRatings(r);
-                        splitToTrainAndTest(dTrainSetSize);
-                        mue = computeMue(); //it computes the mue only on the train
-                        calcAvgs(); //it computes the avrage on m_ratings 
-                        calcuiAndujDic();
-                        calcPopularity();
+                        if (!SplitTrainTest(m_ratings, dTrainSetSize, out m_train, out m_test))
+                            Console.WriteLine("split to train and test failed!");
+                        else
+                        {
+                            m_trainSize = dTrainSetSize;
+                            m_mue = computeMue(); //it computes the mue only on the train
+                            calcAdditionalData(); //it computes the avrage on m_ratings 
+                            calcuiAndujDic();
+                            calcPopularity();
+                        }
+
                     }
                 }
             }
@@ -69,15 +75,17 @@ namespace RecommenderSystem
             }
         }
 
+
+
         public HashSet<string> GetTestUsers()
         {
-            return new HashSet<string>(m_ratings_test.Keys.ToList());
+            return new HashSet<string>(m_test.Keys.ToList());
         }
 
         public HashSet<string> GetTestUserItems(string sUserId)
         {
-            if(m_ratings_test.ContainsKey(sUserId))
-                return new HashSet<string>(m_ratings_test[sUserId].Keys.ToList());
+            if(m_test.ContainsKey(sUserId))
+                return new HashSet<string>(m_test[sUserId]);
             return new HashSet<string>();
         } 
        
@@ -123,7 +131,7 @@ namespace RecommenderSystem
             for (int i = 0; i < popularMovies.Count && ans.Count <= cRecommendations; i++)
             {
                 string movie = popularMovies[i];
-                if (!movieToUser[movie].Contains(sUserId))
+                if (!m_trainMovieToUser[movie].Contains(sUserId))
                     ans.Add(popularMovies[i]);
             }
             return ans;
@@ -134,20 +142,20 @@ namespace RecommenderSystem
             SortedDictionary<double, List<string>> pi2Sorted = new SortedDictionary<double, List<string>>();
             //if (uiAndujDic.Count == 0)
               //  calcuiAndujDic();
-            foreach(string i2 in movieToUser.Keys)
+            foreach(string i2 in m_trainMovieToUser.Keys)
             {
-                if (movieToUser[i2].Contains(sUserId))
+                if (m_trainMovieToUser[i2].Contains(sUserId))
                     continue;
                 double maxw = 0;
-                foreach(string i1 in m_ratings[sUserId].Keys)
+                foreach(string i1 in m_train[sUserId])
                 {
                     int uianduj = uiAndujDic[i1][i2];
                     if (uianduj < 10)
                         continue;
-                    int ui = movieToUser[i1].Count;
+                    int ui = m_trainMovieToUser[i1].Count;
                     int denominator = ui;
                     if (jaccard)
-                        denominator += (movieToUser[i2].Count - uianduj);
+                        denominator += (m_trainMovieToUser[i2].Count - uianduj);
                     double wi2 = (double)uianduj / (double)denominator;
                     if (wi2 > maxw)
                         maxw = wi2;
@@ -178,13 +186,13 @@ namespace RecommenderSystem
             List<string> ans = new List<string>();
             Dictionary<string, double> sumWmovies = new Dictionary<string, double>();
             Dictionary<string, double> similarUsers = calcSimilarUsers(sAlgorithm, sUserId);
-            foreach(string movie in movieToUser.Keys)
+            foreach(string movie in m_trainMovieToUser.Keys)
             {
-                if (movieToUser[movie].Contains(sUserId))
+                if (m_trainMovieToUser[movie].Contains(sUserId))
                     continue;
                 foreach(string user in similarUsers.Keys)
                 {
-                    if(movieToUser[movie].Contains(user))
+                    if(m_trainMovieToUser[movie].Contains(user))
                     {
                         if (!sumWmovies.ContainsKey(movie))
                             sumWmovies.Add(movie, 0);
@@ -220,9 +228,9 @@ namespace RecommenderSystem
         {
             List<string> ans = new List<string>();
             SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
-            foreach (string movie in movieToUser.Keys)
+            foreach (string movie in m_trainMovieToUser.Keys)
             {
-                if (movieToUser[movie].Contains(sUserId))
+                if (m_trainMovieToUser[movie].Contains(sUserId))
                     continue;
                 double predictedRating = PredictRating(predictionMethod, sUserId, movie);
                 if (!moviesPredictedRatings.ContainsKey(predictedRating))
@@ -250,12 +258,12 @@ namespace RecommenderSystem
         private double calcJaccardSimilarity(string userID, string userID2) //TODO
         {
             int numerator = 0;
-            foreach(string movie in m_ratings[userID2].Keys)
+            foreach(string movie in m_train[userID2])
             {
-                if (m_ratings[userID].ContainsKey(movie))
+                if (m_train[userID].Contains(movie))
                     numerator++;
             }
-            int denominator = m_ratings[userID].Keys.Count + m_ratings[userID2].Keys.Count - numerator;
+            int denominator = m_train[userID].Count + m_train[userID2].Count - numerator;
             return ((double)numerator / (double)denominator);
         }
 
@@ -275,10 +283,10 @@ namespace RecommenderSystem
             {
                 if (numOfUsers >= 20 && (sumOfW / (double)numOfUsers) > 0.8) //!!
                     break;
-                int location = (int) ((m_ratings.Count - 1) * r.NextDouble());
+                int location = (int) ((m_train.Count - 1) * r.NextDouble());
                 if (usedLocations.Contains(location))
                     continue;
-                string user = m_ratings.Keys.ToList()[location];
+                string user = m_train.Keys.ToList()[location];
                 if (user.Equals(sUserId))
                     continue;
                 double w = 0;
@@ -324,10 +332,10 @@ namespace RecommenderSystem
 
         private void calcuiAndujDic()
         {
-            foreach(string imovie in movieToUser.Keys)
+            foreach(string imovie in m_trainMovieToUser.Keys)
             {
                 uiAndujDic.Add(imovie, new Dictionary<string, int>());
-                foreach(string jmovie in movieToUser.Keys)
+                foreach(string jmovie in m_trainMovieToUser.Keys)
                 {
                     if (imovie.Equals(jmovie))
                         continue;
@@ -341,9 +349,9 @@ namespace RecommenderSystem
                         }
                     }
                     uianduj = 0;
-                    foreach(string user in movieToUser[jmovie])
+                    foreach(string user in m_trainMovieToUser[jmovie])
                     {
-                        if (movieToUser[imovie].Contains(user))
+                        if (m_trainMovieToUser[imovie].Contains(user))
                             uianduj++;
                     }
                     uiAndujDic[imovie].Add(jmovie, uianduj);
@@ -352,12 +360,14 @@ namespace RecommenderSystem
                 }
             }
         }
+
+        //change this!!!
         private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
         {
             SortedDictionary<double, List<string>> moviePopSorted = new SortedDictionary<double, List<string>>();
-            foreach (string movie in moviePopularity.Keys)
+            foreach (string movie in m_trainMoviePopularity.Keys)
             {
-                double popRate = moviePopularity[movie];
+                double popRate = m_trainMoviePopularity[movie];
                 if (!moviePopSorted.ContainsKey(popRate))
                     moviePopSorted.Add(popRate, new List<string>());
                 moviePopSorted[popRate].Add(movie);
@@ -376,7 +386,7 @@ namespace RecommenderSystem
             Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ans = new Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>>();
             int max = lLengths.Max();
             Dictionary<string, Dictionary<RecommendationMethod, List<string>>> recommendations = new Dictionary<string, Dictionary<RecommendationMethod, List<string>>>();
-            foreach (string user in m_ratings_test.Keys)
+            foreach (string user in m_test.Keys)
             {
                 recommendations.Add(user, new Dictionary<RecommendationMethod, List<string>>());
                 foreach(RecommendationMethod method in lMethods)

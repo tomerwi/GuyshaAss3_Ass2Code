@@ -56,33 +56,22 @@ namespace RecommenderSystem
 
         static void Main(string[] args)
         {
-            SortedDictionary<double, List<string>> sorted = new SortedDictionary<double, List<string>>();
-            sorted.Add(-1, new List<string>());
-            sorted.Add(0, new List<string>());
-            sorted.Add(30, new List<string>());
-            sorted.Add(30.1, new List<string>());
-            sorted[30.1].Add("1");
-            sorted[30.1].Add("2");
-            sorted[30].Add("3");
-            sorted[0].Add("4");
-            sorted[-1].Add("5");
-            List<string> l1 = new List<string>();
-            List<string> l2 = new List<string>();
-            List<double> rev = sorted.Keys.ToList();
-            rev.Reverse();
-            foreach(double k in rev)
-            {
-                l1.AddRange(sorted[k]);
-                foreach (string s in sorted[k])
-                    l2.Add(s);
-            }
-            Console.WriteLine("l1:");
-            foreach (string s in l1)
-                Console.WriteLine(s);
-            Console.WriteLine("l2:");
-            foreach (string s in l2)
-                Console.WriteLine(s);
+            Dictionary<int, List<string>> param = new Dictionary<int, List<string>>();
+            param.Add(1, new List<string>());
+            param[1].Add("1");
+            param[1].Add("2");
+            param.Add(2, new List<string>());
+            param[2].Add("21");
+            Dictionary<int, List<string>> res = test(param);
+            Console.WriteLine(param.Count);
+            Console.WriteLine(res.Count);
             Assignment3();
+        }
+        static Dictionary<int, List<string>> test (Dictionary<int, List<string>> param)
+        {
+            param.Remove(2);
+            param[1].Remove("1");
+            return new Dictionary<int, List<string>>();
         }
     }
 }
