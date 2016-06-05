@@ -25,13 +25,11 @@ namespace RecommenderSystem
         protected Dictionary<string, List<double>> puDic;
         protected Dictionary<string, List<double>> qiDic;
         protected double m_mue;
-       // protected int m_dataSetSize = 0;
+        protected List<string> popularMovies;
+        // protected int m_dataSetSize = 0;
         bool m_trainedBaseModel = false;
         bool m_trainedStereoType = false;
         protected double m_trainSize;
-
-        //a3
-        protected Dictionary<string, double> m_trainMoviePopularity;
 
 
         //constructor
@@ -50,9 +48,8 @@ namespace RecommenderSystem
 
             puDic = new Dictionary<string, List<double>>(); //I think that each pu and qi is a vector of values
             qiDic = new Dictionary<string, List<double>>();
-
-            //a3
-            m_trainMoviePopularity = new Dictionary<string, double>();
+            popularMovies = new List<string>();
+            
         }
 
         //load a datatset 
@@ -61,49 +58,7 @@ namespace RecommenderSystem
         //More at http://recsyswiki.com/wiki/Movietweetings
         //Download at https://github.com/sidooms/MovieTweetings/tree/master/latest
         //Do all precomputations here if needed
-        /*public void Load(string sFileName)
-        {
-            try
-            {
-                using (FileStream fs = new FileStream(sFileName, FileMode.Open, FileAccess.Read))
-                {
-                    using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
-                    {
-                        parseRatings(r);
-                        calcAvgs();
-                        calcRAI();
-                    }
-                }
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine("Couldn't load file");
-            }
-        }
-
-        //new E2
-        public void Load(string sFileName, double dTrainSetSize)
-        {
-            try
-            {
-                using (FileStream fs = new FileStream(sFileName, FileMode.Open, FileAccess.Read))
-                {
-                    using (StreamReader r = new StreamReader(fs, Encoding.UTF8))
-                    {
-                        parseRatings(r);
-                        splitToTrainAndTest(dTrainSetSize);
-                        mue = computeMue(); //it computes the mue only on the train
-                        calcAvgs(); //it computes the avrage on m_ratings 
-                        calcRAI();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("Couldn't load file");
-            }
-        }
-        */
+    
 
         protected bool SplitTrainTest(Dictionary<string,Dictionary<string,double>> dDataSet, double dTrainSetSize,
             out Dictionary<string,List<string>> dTrain, out Dictionary<string, List<string>> dTest)
@@ -200,74 +155,6 @@ namespace RecommenderSystem
         }
 
 
-       /* protected void splitToTrainAndTest(double dTrainSetSize)
-        {
-            //List<string> lTestKeys = m_ratings.Keys.Where(x => m_ratings[x].Count > 1).ToList();
-            //YourList.OrderBy(x => rnd.Next()).Take(5)
-
-            HashSet<string> alreadyChosen = new HashSet<string>();
-            int currentTestSize = 0;
-            Random r = new Random();
-            int testSize = (int)((1 - dTrainSetSize) * dataSetSize);
-            //int validationSize = testSize;
-            bool validation = false;
-            // float d = currentTestSize / dataSetSize;
-            while (currentTestSize < testSize || !validation) 
-            {
-                if (currentTestSize >= testSize)
-                {
-                    validation = true;
-                    currentTestSize = 0;
-                }
-                double currentNum_user = r.NextDouble();
-                int locationOfUser = (int)((m_train.Keys.Count - 1) * currentNum_user);
-                if (locationOfUser < m_train.Keys.ToList().Count) //tomer: this conditions cant be false
-                {
-                    string userID = m_train.Keys.ToList()[locationOfUser];
-                    if (!alreadyChosen.Contains(userID) && m_train[userID].Keys.Count>1)
-                    {
-                        int k = splitUserToTrainAndTest(userID, r.NextDouble(),validation);
-                        if (k > 0) //only if we actually took some movies from this user
-                        {
-                            currentTestSize += k;
-                            alreadyChosen.Add(userID);
-                        }
-                    }
-                }
-            }
-        }
-
-        protected int splitUserToTrainAndTest(string userID, double precentOfMoviesToTest) //returns number of movies moved to test set
-        {
-            int numOfMovies = (m_train[userID].Count-1);
-            int k = (int)(numOfMovies * precentOfMoviesToTest);
-            int numOfAdded = 0;
-            if (numOfAdded < k)
-            {
-                if (!validation)
-                    m_test.Add(userID, new Dictionary<string, double>());
-                else
-                    m_ratings_validation.Add(userID, new Dictionary<string, double>());
-            }
-
-            foreach (string movieID in m_ratings[userID].Keys)
-            {
-                //int precentOfTest = m_test.Count / dataSetSize; //1) always be zero because its int. 2) m_rating.count gives the number of users, not the number of Dataset!
-                if (numOfAdded >= k )
-                    break;
-                double rating = m_ratings[userID][movieID];
-                if(!validation)
-                    m_test[userID].Add(movieID, rating);
-                else
-                    m_ratings_validation[userID].Add(movieID, rating);
-                m_train[userID].Remove(movieID);
-                numOfAdded++;
-            }
-            //if (m_train[userID].Count == 0) //cant be true
-              //  m_train.Remove(userID);
-            return numOfAdded;
-        }
-       */
 
         protected void parseRatings(StreamReader sr) //not saving time stamp
         {
@@ -285,53 +172,20 @@ namespace RecommenderSystem
                     if (!m_ratings.ContainsKey(userId))
                     {
                         m_ratings.Add(userId, new Dictionary<string, double>());
-                       // m_train.Add(userId, new Dictionary<string, double>());
-                       // m_trainUserAvgs.Add(userId, 0); 
                     }
                     m_ratings[userId].Add(movieId, rating);
-                   // m_train[userId].Add(movieId, rating);
-                   // m_trainUserAvgs[userId] += rating;
-                   // dataSetSize++;
-
-                  /*  if (!cosineDenominator.ContainsKey(userId))
-                    {
-                        cosineDenominator.Add(userId, 0);
-                    }
-                    cosineDenominator[userId] = cosineDenominator[userId] + Math.Pow(rating,2);
-
-                   if (!m_trainMovieToUser.ContainsKey(movieId))
-                    {
-                        m_trainMovieToUser.Add(movieId, new List<string>());
-                        moviePopularity.Add(movieId, 0);//a3
-
-                    }
-                    m_trainMovieToUser[movieId].Add(userId);*/
-                   // moviePopularity[movieId] += rating;//a3
-                    /*if (!currentAvarage.ContainsKey(userId))
-                    {
-                        currentAvarage.Add(userId, 0);
-                    }
-                    int currentRatedMoviesNum = m_ratings[userId].Keys.Count;
-                    currentAvarage[userId] = currentAvarage[userId] + (rating / currentRatedMoviesNum);*/
+         
                 }
                 line = sr.ReadLine();
             }
             sr.Close();
         }
 
-     /*   protected void calcAvgs() //for the initial calculations ufter loading ratings file
-        {
-            //calc avg ratings for each user - the sums foreach user has already calculated
-            foreach(string userId in m_ratings.Keys) //tomer:  maybe it can be done in the function above
-            {
-                int numOfRatings = m_ratings[userId].Count; //check!!
-                double sumOfRatings = m_trainUserAvgs[userId];
-                m_trainUserAvgs[userId] = sumOfRatings / numOfRatings;
-            }
-        }*/
+  
 
         protected void calcAdditionalData()
         {
+            Dictionary<string, double> moviePopularity = new Dictionary<string, double>();
             foreach(string user in m_train.Keys)
             {
                 double userRSum = 0;
@@ -343,32 +197,37 @@ namespace RecommenderSystem
                     if (!m_trainMovieToUser.ContainsKey(movie))
                     {
                         m_trainMovieToUser.Add(movie, new List<string>());
-                        m_trainMoviePopularity.Add(movie, 0);
+                        moviePopularity.Add(movie, 0);
                     }
                     m_trainMovieToUser[movie].Add(user);
-                    m_trainMoviePopularity[movie] += rating;
+                    moviePopularity[movie] += rating;
                     m_cosineDenominator[user] += Math.Pow(rating, 2);
                 }
-                m_trainUserAvgs.Add(user, (userRSum/ m_train[user].Count));
+                m_trainUserAvgs.Add(user, (userRSum / m_train[user].Count));
+
             }
+
+            popularMovies = moviePopularity.Keys.ToList();
+            popularMovies.Sort((a, b) => moviePopularity[a].CompareTo(moviePopularity[b]));
+
         }
 
-       /* protected void calcRAI()
-        {
-            foreach (string user in m_ratings.Keys)
-            {
-                double average = m_userAvgs[user];
-                double value = 0;
-                Dictionary<string, double> rai = new Dictionary<string, double>();
-                foreach(string movie in m_ratings[user].Keys)
-                {
-                    value = m_ratings[user][movie]-average;
-                    rai.Add(movie, value);
-                    
-                }
-                raiDic_AllUsers.Add(user, rai);
-            }
-        }*/
+        /* protected void calcRAI()
+         {
+             foreach (string user in m_ratings.Keys)
+             {
+                 double average = m_userAvgs[user];
+                 double value = 0;
+                 Dictionary<string, double> rai = new Dictionary<string, double>();
+                 foreach(string movie in m_ratings[user].Keys)
+                 {
+                     value = m_ratings[user][movie]-average;
+                     rai.Add(movie, value);
+
+                 }
+                 raiDic_AllUsers.Add(user, rai);
+             }
+         }*/
 
         //return a list of the ids of all the users in the dataset
         public List<string> GetAllUsers()

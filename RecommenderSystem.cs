@@ -16,7 +16,6 @@ namespace RecommenderSystem
         public enum RecommendationMethod { Popularity, Pearson, Cosine, BaseModel, Stereotypes, NNPearson, NNCosine, NNBaseModel, NNJaccard, CP, Jaccard };
 
         //class members here
-        private List<string> popularMovies;
         private Dictionary<string, Dictionary<string, int>> uiAndujDic;
 
         public RecommenderSystem()
@@ -35,7 +34,6 @@ namespace RecommenderSystem
                         parseRatings(r);
                         calcAdditionalData();
                         calcuiAndujDic();
-                        calcPopularity();
                     }
                 }
             }
@@ -63,7 +61,6 @@ namespace RecommenderSystem
                             m_mue = computeMue(); //it computes the mue only on the train
                             calcAdditionalData(); //it computes the avrage on m_ratings 
                             calcuiAndujDic();
-                            calcPopularity();
                         }
 
                     }
@@ -122,19 +119,8 @@ namespace RecommenderSystem
         }
         private List<string> recommendPopularity(string sUserId, int cRecommendations)
         {
-            List<string> ans = new List<string>();
-            //if (popularMovies.Count == 0)
-              //  calcPopularity();
-            if (popularMovies.Count < cRecommendations)
-                return popularMovies;
-            //remove users' movies
-            for (int i = 0; i < popularMovies.Count && ans.Count <= cRecommendations; i++)
-            {
-                string movie = popularMovies[i];
-                if (!m_trainMovieToUser[movie].Contains(sUserId))
-                    ans.Add(popularMovies[i]);
-            }
-            return ans;
+
+           return popularMovies.TakeWhile(movie => !m_trainMovieToUser[movie].Contains(sUserId)).Take(cRecommendations).ToList();
         }
 
         private List<string> recommendCP(string sUserId, int cRecommendations , bool jaccard)
@@ -183,7 +169,6 @@ namespace RecommenderSystem
         }
         private List<string> recommendNN(RecommendationMethod sAlgorithm, string sUserId, int cRecommendations)
         {
-            List<string> ans = new List<string>();
             Dictionary<string, double> sumWmovies = new Dictionary<string, double>();
             Dictionary<string, double> similarUsers = calcSimilarUsers(sAlgorithm, sUserId);
             foreach(string movie in m_trainMovieToUser.Keys)
@@ -200,62 +185,37 @@ namespace RecommenderSystem
                     }
                 }
             }
-            //think if there's a better way to do it
-            SortedDictionary<double, List<string>> movieWSorted = new SortedDictionary<double, List<string>>();
-            foreach(string movie in sumWmovies.Keys)
-            {
-                double w = sumWmovies[movie];
-                if (!movieWSorted.ContainsKey(w))
-                    movieWSorted.Add(w, new List<string>());
-                movieWSorted[w].Add(movie);
-            }
-            List<double> rev = movieWSorted.Keys.ToList();
-            rev.Reverse();
-            foreach(double d in rev)
-            {
-                foreach(string movie in movieWSorted[d])
-                {
-                    if (ans.Count >= cRecommendations)
-                        break;
-                    ans.Add(movie);
-                }
-                if (ans.Count >= cRecommendations)
-                    break;
-            }
-            return ans;
+
+            List<string> moviesSorted = sumWmovies.Keys.ToList();
+            moviesSorted.Sort((a, b) => sumWmovies[a].CompareTo(sumWmovies[b]));
+            return moviesSorted.Take(cRecommendations).ToList();
+
+ 
         }
         private List<string> recommendPredictions(string sUserId, int cRecommendations, PredictionMethod predictionMethod)
         {
-            List<string> ans = new List<string>();
-            SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
+            //List<string> ans = new List<string>();
+            //SortedDictionary<double, List<string>> moviesPredictedRatings = new SortedDictionary<double, List<string>>();
+            Dictionary<string, double> moviesPredictedRatings = new Dictionary<string, double>();
             foreach (string movie in m_trainMovieToUser.Keys)
             {
                 if (m_trainMovieToUser[movie].Contains(sUserId))
                     continue;
                 double predictedRating = PredictRating(predictionMethod, sUserId, movie);
-                if (!moviesPredictedRatings.ContainsKey(predictedRating))
+                moviesPredictedRatings.Add(movie, predictedRating);
+               /* if (!moviesPredictedRatings.ContainsKey(predictedRating))
                     moviesPredictedRatings.Add(predictedRating, new List<string>());
-                moviesPredictedRatings[predictedRating].Add(movie);
+                moviesPredictedRatings[predictedRating].Add(movie);*/
             }
-            List<double> rev = moviesPredictedRatings.Keys.ToList();
-            rev.Reverse();
-            foreach (double d in rev)
-            {
-                if (ans.Count >= cRecommendations)
-                    break;
-                ans.AddRange(moviesPredictedRatings[d]);
-            }
-            if (ans.Count > cRecommendations)//crop
-            {
-                ans.RemoveRange(cRecommendations, ans.Count - cRecommendations); //!!
-            }
-
-            return ans;
+            List<string> moviesSorted = moviesPredictedRatings.Keys.ToList();
+            moviesSorted.Sort((a, b) => moviesPredictedRatings[a].CompareTo(moviesPredictedRatings[b]));
+            return moviesSorted.Take(cRecommendations).ToList();  
+        
         }
 
         //calc funcs 
 
-        private double calcJaccardSimilarity(string userID, string userID2) //TODO
+        private double calcJaccardSimilarity(string userID, string userID2) 
         {
             int numerator = 0;
             foreach(string movie in m_train[userID2])
@@ -274,7 +234,7 @@ namespace RecommenderSystem
 
         private Dictionary<string,double> calcSimilarUsers(RecommendationMethod sAlgorithm, string sUserId)
         {
-            SortedDictionary<double, List<string>> wToUser = new SortedDictionary<double, List<string>>();
+            Dictionary<string, double> userW = new Dictionary<string, double>();
             List<int> usedLocations = new List<int>();
             double sumOfW = 0;
             int numOfUsers = 0;
@@ -287,7 +247,7 @@ namespace RecommenderSystem
                 if (usedLocations.Contains(location))
                     continue;
                 string user = m_train.Keys.ToList()[location];
-                if (user.Equals(sUserId))
+                if (user.Equals(sUserId) /*|| userW.ContainsKey(user)*/)
                     continue;
                 double w = 0;
                 if (sAlgorithm == RecommendationMethod.NNCosine)
@@ -303,34 +263,17 @@ namespace RecommenderSystem
                 {
                     sumOfW += w;
                     numOfUsers++;
-                    if (!wToUser.ContainsKey(w))
-                        wToUser.Add(w, new List<string>());
-                    wToUser[w].Add(user);
+                    userW.Add(user, w);
+
                 }
             }
-            Dictionary<string, double> similarUsers = new Dictionary<string, double>();
-            //take only top 20
-            List<double> rev = wToUser.Keys.ToList();
-            rev.Reverse();
-            foreach (double w in rev)
-            {
-                List<string> users = wToUser[w];
-                foreach(string user in users)
-                {
-                    if (!similarUsers.ContainsKey(user))
-                        similarUsers.Add(user, w);
-                    if (similarUsers.Count > 20)
-                        break;
-                }
-                if (similarUsers.Count > 20)
-                    break;
-            }
-            
-            return similarUsers;
+
+            return userW.OrderBy(x => x.Value).Take(20).ToDictionary(x => x.Key, x => x.Value);
+        
         }
    
 
-        private void calcuiAndujDic()
+        private void calcuiAndujDic() //improve
         {
             foreach(string imovie in m_trainMovieToUser.Keys)
             {
@@ -361,25 +304,7 @@ namespace RecommenderSystem
             }
         }
 
-        //change this!!!
-        private void calcPopularity() // func that will be called only once to calc the popularity - will generate a list of all the items that will be orderd accourding to the popularity (high->low)
-        {
-            SortedDictionary<double, List<string>> moviePopSorted = new SortedDictionary<double, List<string>>();
-            foreach (string movie in m_trainMoviePopularity.Keys)
-            {
-                double popRate = m_trainMoviePopularity[movie];
-                if (!moviePopSorted.ContainsKey(popRate))
-                    moviePopSorted.Add(popRate, new List<string>());
-                moviePopSorted[popRate].Add(movie);
-            }
-            List<double> rev = moviePopSorted.Keys.ToList();
-            rev.Reverse();
-            foreach(double d in rev)
-            {
-                popularMovies.AddRange(moviePopSorted[d]);
-            }
-            
-        }
+    
         public Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
         {
             Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>> ans = new Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>>();
@@ -422,9 +347,6 @@ namespace RecommenderSystem
 
             return ans;
         }
-
-        //               length           algorithm              precision/recall   result        ---> i think...
-        //public Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
 
         private void calcPrecisionRecall(string user, List<string> recommendations, out double dPrecision, out double dRecall)
         {

@@ -37,15 +37,15 @@ namespace RecommenderSystem
             lLengths.Add(20);
 
             DateTime dtStart = DateTime.Now;
-            Dictionary<int, Dictionary<RecommenderSystem.RecommendationMethod, Dictionary<string, double>>> dResults = rs.ComputePrecisionRecall(lMethods, lLengths, 1000);
+            Dictionary<int, Dictionary<string, Dictionary<RecommenderSystem.RecommendationMethod, double>>> dResults = rs.ComputePrecisionRecall(lMethods, lLengths, 1000);
             Console.WriteLine("Precision-recall scores for all methods are:");
             foreach (int iLength in lLengths)
             {
                 foreach (RecommenderSystem.RecommendationMethod sMethod in lMethods)
                 {
-                    foreach (string sMetric in dResults[iLength][sMethod].Keys)
+                    foreach (string sMetric in dResults[iLength].Keys)
                     {
-                        Console.WriteLine(iLength + "," + sMethod + "," + sMetric + " = " + Math.Round(dResults[iLength][sMethod][sMetric], 4));
+                        Console.WriteLine(iLength + "," + sMethod + "," + sMetric + " = " + Math.Round(dResults[iLength][sMetric][sMethod], 4));
                     }
                 }
             }
@@ -56,22 +56,8 @@ namespace RecommenderSystem
 
         static void Main(string[] args)
         {
-            Dictionary<int, List<string>> param = new Dictionary<int, List<string>>();
-            param.Add(1, new List<string>());
-            param[1].Add("1");
-            param[1].Add("2");
-            param.Add(2, new List<string>());
-            param[2].Add("21");
-            Dictionary<int, List<string>> res = test(param);
-            Console.WriteLine(param.Count);
-            Console.WriteLine(res.Count);
             Assignment3();
         }
-        static Dictionary<int, List<string>> test (Dictionary<int, List<string>> param)
-        {
-            param.Remove(2);
-            param[1].Remove("1");
-            return new Dictionary<int, List<string>>();
-        }
+       
     }
 }
