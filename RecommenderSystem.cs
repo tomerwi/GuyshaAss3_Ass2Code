@@ -380,24 +380,62 @@ namespace RecommenderSystem
             }
             
         }
-        //               length           algorithm              precision/recall   result        ---> i think...
-        public Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
+        public Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
         {
-            Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ans = new Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>>();
+            Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>> ans = new Dictionary<int, Dictionary<string, Dictionary<RecommendationMethod, double>>>();
+            lLengths.ForEach(l =>
+            {
+                ans.Add(l, new Dictionary<string, Dictionary<RecommendationMethod, double>>());
+                ans[l].Add("precision", new Dictionary<RecommendationMethod, double>());
+                ans[l].Add("recall", new Dictionary<RecommendationMethod, double>());
+            });
             int max = lLengths.Max();
-            Dictionary<string, Dictionary<RecommendationMethod, List<string>>> recommendations = new Dictionary<string, Dictionary<RecommendationMethod, List<string>>>();
             foreach (string user in m_test.Keys)
             {
-                recommendations.Add(user, new Dictionary<RecommendationMethod, List<string>>());
-                foreach(RecommendationMethod method in lMethods)
+                foreach (RecommendationMethod method in lMethods)
                 {
-                    recommendations[user].Add(method, Recommend(method, user, max));
+                    List<string> reccomendation = Recommend(method, user, max);
+                    lLengths.ForEach(len => 
+                    {
+                        if (!ans[len]["precision"].ContainsKey(method))
+                            ans[len]["precision"].Add(method, 0);
+                        if (!ans[len]["recall"].ContainsKey(method))
+                            ans[len]["recall"].Add(method, 0);
+                        double prec = 0;
+                        double rec = 0;
+                        calcPrecisionRecall(user, reccomendation.Take(len).ToList(), out prec, out rec);
+                        ans[len]["precision"][method] += prec;
+                        ans[len]["recall"][method] += rec;
+                    });
+
                 }
             }
-
-
+            lLengths.ForEach(l => 
+            {
+                lMethods.ForEach(m =>
+                {
+                    ans[l]["precision"][m] = (ans[l]["precision"][m] / m_test.Keys.Count);
+                    ans[l]["recall"][m] = (ans[l]["recall"][m] / m_test.Keys.Count);
+                });
+            });
+             
 
             return ans;
+        }
+
+        //               length           algorithm              precision/recall   result        ---> i think...
+        //public Dictionary<int, Dictionary<RecommendationMethod, Dictionary<string, double>>> ComputePrecisionRecall(List<RecommendationMethod> lMethods, List<int> lLengths, int cTrials)
+
+        private void calcPrecisionRecall(string user, List<string> recommendations, out double dPrecision, out double dRecall)
+        {
+            int tp = 0;
+            recommendations.ForEach(movie => 
+            {
+                if (m_test[user].Contains(movie))
+                    tp++;
+            });
+            dPrecision = tp / (double)recommendations.Count;
+            dRecall = tp /(double) m_test[user].Count;
         }
 
     }
